@@ -8,9 +8,13 @@
 # Define a function odd_range(num1, num2) that takes a starting number (num1) and an ending number (num2)
 # and returns all odd numbers as an array between num1 (inclusive) and num2 (exclusive)
 def odd_range(num1, num2):
-  # YOUR CODE HERE
+  numArray = []
+  for x in range (num1, num2):
 
-  return
+    if x % 2 != 0:
+      numArray.append(x)
+
+  return numArray
 
 # Part B. has_lower_case
 # Define a function has_lower_case(s) that takes a string s
