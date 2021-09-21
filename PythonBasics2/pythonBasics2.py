@@ -23,9 +23,21 @@ def count_threes(n):
 # Define a function longest_consecutive_repeating_char(s) that takes
 # a string s and returns the character that has the longest consecutive repeat.
 def longest_consecutive_repeating_char(s):
-  # YOUR CODE HERE
+  last_char = ""
+  curr_count, max_count = 0
+  max_char = s[0]
 
-  return
+  for c in s:
+      if c == last_char:
+          curr_count += 1
+          if curr_count > max_count:
+              max_count = curr_count
+              max_char = c
+      else:
+          curr_count = 1
+          last_char = c
+
+  return max_char
 
 
 # Part C. is_palindrome
@@ -35,6 +47,8 @@ def longest_consecutive_repeating_char(s):
 # forwards. Treat capital letters the same as lowercase ones
 # and ignore spaces (i.e. case insensitive).
 def is_palindrome(s):
-  # YOUR CODE HERE
+  for i in range(s//2):
+    if (s[i] != s[i -1]):
+      return False
 
-  return
+  return True
