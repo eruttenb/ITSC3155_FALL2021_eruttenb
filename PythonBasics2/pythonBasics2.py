@@ -27,21 +27,14 @@ def count_threes(n):
 # repeat. For example, the longest_consecutive_repeating_char('aabbccd') would return
 # ['a', 'b', 'c'] (order doesn't matter). You must use a dictionary to accomplish this.
 def longest_consecutive_repeating_char(s):
-    last_char = ""
-    curr_count, max_count = 0
-    max_char = s[0]
+    d = {c : 1 for c in s}
 
-    for c in s:
-        if c == last_char:
-            curr_count += 1
-            if curr_count > max_count:
-                max_count = curr_count
-                max_char = c
-        else:
-            curr_count = 1
-            last_char = c
+    for c in range(len(s) - 1):
+        if s[c] == s[c + 1]:
+            d[s[c]] += 1
 
-    return max_char
+    max_value = max(d.values())
+    return [key for key,value in d.items() if value == max_value]
 
 
 # Part C. is_palindrome
