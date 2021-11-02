@@ -35,28 +35,28 @@ with app.app_context():
 @app.route('/index')
 def index():
     #Get user from database
-    a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu')
+    a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
     return render_template('index.html', user=a_user)
 
 
 @app.route('/notes')
 def get_notes():
     #Get user from database
-    a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu')
+    a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
     #Get notes from database
     my_notes = db.session.query(Note).all()
 
-    return render_template('notes.html', notes=notes, user=a_user)
+    return render_template('notes.html', notes=my_notes, user=a_user)
 
 
 @app.route('/notes/<note_id>')
 def get_note(note_id):
     #Get user from database
-    a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu')
+    a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
     #Get notes from database
-    my_notes = db.session.query(Note).filter_by(id=note_id)
+    my_notes = db.session.query(Note).filter_by(id=note_id).one()
 
-    return render_template('note.html', note=notes[int(note_id)], user=a_user)
+    return render_template('note.html', note=my_notes , user=a_user)
 
 
 @app.route('/notes/new', methods=['GET', 'POST'])
@@ -73,15 +73,18 @@ def new_note():
         #format date mm/dd/yyy
         today = today.strftime("%m-%d-%Y")
         #get the last ID used and increment by 1
-        id = len(notes)+1
+        #id = len(notes)+1
         #create new note entry
-        notes[id] = {'title': title, 'text': text, 'date': today}
+        #notes[id] = {'title': title, 'text': text, 'date': today}
+        new_record = Note(title, text, today)
+        db.session.add(new_record)
+        db.session.commit()
 
         return redirect(url_for('get_notes'))
     else:
         #GET request - show new note form
         #Retrieve user from database
-        a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu')
+        a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
         return render_template('new.html', user=a_user)
 
 
