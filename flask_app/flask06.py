@@ -36,14 +36,14 @@ with app.app_context():
 @app.route('/')
 @app.route('/index')
 def index():
-    # Get user from database
-    a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
-    return render_template('index.html', user=a_user)
+    # Check if a user is saved in session
+    if session.get('user'):
+        return render_template('index.html', user=session['user'])
+    return render_template('index.html')
 
 
 @app.route('/notes')
 def get_notes():
-    # Retrieve user from database
     # Check if user is saved in session
     if session.get('user'):
         # Retrieve notes from database
@@ -67,69 +67,78 @@ def get_note(note_id):
 
 @app.route('/notes/new', methods=['GET', 'POST'])
 def new_note():
-    # Check method used for request
-    if request.method == 'POST':
-        # Get title data
-        title = request.form['title']
-        # Get note data
-        text = request.form['noteText']
-        # Get data stamp
-        from datetime import date
-        today = date.today()
-        # Format date mm/dd/yyy
-        today = today.strftime("%m-%d-%Y")
-        # Get the last ID used and increment by 1
-        # id = len(notes)+1
-        # Create new note entry
-        # notes[id] = {'title': title, 'text': text, 'date': today}
-        new_record = Note(title, text, today)
-        db.session.add(new_record)
-        db.session.commit()
+    # Check if user is saved in session
+    if session.get('user'):
+        # Check method used for request
+        if request.method == 'POST':
+            # Get title data
+            title = request.form['title']
+            # Get note data
+            text = request.form['noteText']
+            # Get data stamp
+            from datetime import date
+            today = date.today()
+            # Format date mm/dd/yyy
+            today = today.strftime("%m-%d-%Y")
+            # Get the last ID used and increment by 1
+            # id = len(notes)+1
+            # Create new note entry
+            # notes[id] = {'title': title, 'text': text, 'date': today}
+            new_record = Note(title, text, today, session['user_id'])
+            db.session.add(new_record)
+            db.session.commit()
 
-        return redirect(url_for('get_notes'))
+            return redirect(url_for('get_notes'))
+        else:
+            # GET request - show new note form
+            return render_template('new.html', user=session['user'])
     else:
-        # GET request - show new note form
-        # Retrieve user from database
-        a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
-        return render_template('new.html', user=a_user)
+        # User is not in session, so redirect to login
+        return redirect(url_for('login'))
 
 
 @app.route('/notes/edit/<note_id>', methods=['GET', 'POST'])
 def update_note(note_id):
-    # Check method used for request
-    if request.method == 'POST':
-        # Get title data
-        title = request.form['title']
-        # Get note data
-        text = request.form['noteText']
-        note = db.session.query(Note).filter_by(id=note_id).one()
-        # Update note data
-        note.title = title
-        note.text = text
-        # Update note in db
-        db.session.add(note)
-        db.session.commit()
+    # Check if user is saved in session
+    if session.get('user'):
+        # Check method used for request
+        if request.method == 'POST':
+            # Get title data
+            title = request.form['title']
+            # Get note data
+            text = request.form['noteText']
+            note = db.session.query(Note).filter_by(id=note_id).one()
+            # Update note data
+            note.title = title
+            note.text = text
+            # Update note in db
+            db.session.add(note)
+            db.session.commit()
 
-        return redirect(url_for('get_notes'))
+            return redirect(url_for('get_notes'))
+        else:
+            # GET request - show new note form to edit note
+            # Retrieve note from database
+            my_note = db.session.query(Note).filter_by(id=note_id).one()
     else:
-        # GET request - show new note form to edit note
-        # retrieve user from database
-        a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
-
-        # retrieve note from database
-        my_note = db.session.query(Note).filter_by(id=note_id).one()
-
-        return render_template('new.html', note=my_note, user=a_user)
+        # User is not in session, so redirect to login
+        return redirect(url_for('login'))
 
 
 @app.route('/notes/delete/<note_id>', methods=['POST'])
 def delete_note(note_id):
-    # Retrieve note from database
-    my_note = db.session.query(Note).filter_by(id=note_id).one()
-    db.session.delete(my_note)
-    db.session.commit()
+    # Check if a user is saved in session
+    if session.get('user'):
+        # Retrieve note from database
+        my_note = db.session.query(Note).filter_by(id=note_id).one()
 
-    return redirect(url_for('get_notes'))
+        db.session.delete(my_note)
+        db.session.commit()
+
+        return redirect(url_for('get_notes'))
+    else:
+        # User is not in session, so redirect to login
+        return redirect(url_for('login'))
 
 
 @app.route('/register', methods=['POST', 'GET'])
@@ -154,31 +163,31 @@ def register():
         # show user dashboard view
         return redirect(url_for('get_notes'))
 
-    # something went wrong - display register view
+    # Something went wrong - display register view
     return render_template('register.html', form=form)
 
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
     login_form = LoginForm()
-    #Validate_on_submit only validates using POST
+    # Validate_on_submit only validates using POST
     if login_form.validate_on_submit():
-        #We know user exists. We can use one()
+        # We know user exists. We can use one()
         the_user = db.session.query(User).filter_by(email=request.form['email']).one()
-        #User exists check password entered matches stored password
+        # User exists check password entered matches stored password
         if bcrypt.checkpw(request.form['password'].encode('utf-8'), the_user.password):
-            #Password match add user info to session
+            # Password match add user info to session
             session['user'] = the_user.first_name
             session['user_id'] = the_user.id
-            #Render view
+            # Render view
             return redirect(url_for('get_notes'))
 
-        #Password check failed
-        #Set error message to alert user
+        # Password check failed
+        # Set error message to alert user
         login_form.password.errors = ["Incorrect username or password."]
         return render_template("login.html", form=login_form)
     else:
-        #Form did not validate or GET request
+        # Form did not validate or GET request
         return render_template("login.html", form=login_form)
 
 

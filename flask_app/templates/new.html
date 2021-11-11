@@ -16,13 +16,13 @@
            <a href="{{ url_for('new_note') }}"> Add Note</a>
        </nav>
 
-        <h1>Welcome {{user.name}} to the 49er Notes App!</h1>
+        <h1>Welcome {{user}} to the 49er Notes App!</h1>
        {% if note %}
             <form action="{{ url_for('update_note', note_id=note.id) }}" method="post">
        {% else %}
             <form action ="new" method="post">
        {% endif %}
-                <p><label>Title </label></p>
+                <p><label>Title</label></p>
                 <p> <input type="text" name="title" value="{% if note %}{{note.title}} {% endif %}"/></p>
                 <p><label>Note </label></p>
                 <p>
