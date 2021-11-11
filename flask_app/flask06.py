@@ -1,25 +1,30 @@
 # FLASK Tutorial 6
 
-#Imports
-import os  #os is used to get environment variables IP & PORT
-from flask import Flask  #Flask is the web app that we will customize
-from flask import render_template, request, redirect, url_for
+# Imports
+import os  # os is used to get environment variables IP & PORT
+from flask import Flask  # Flask is the web app that we will customize
+from flask import render_template, request, redirect, url_for, session
 from database import db
 from models import Note as Note
 from models import User as User
+from forms import RegisterForm
+import bcrypt
 
-app = Flask(__name__)  #Create an app
+app = Flask(__name__)  # Create an app
 
-#Set name and location of database file
+# Set name and location of database file
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///flask_note_app.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS']= False
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Configure secret key that will be used by the app to secure session data
+app.config['SECRET_KEY'] = 'SE3155'
 
-#Bind SQLAlchemy db object to this Flask app
+# Bind SQLAlchemy db object to this Flask app
 db.init_app(app)
 
-#Setup models
+# Setup models
 with app.app_context():
-    db.create_all()   #Run under the app context
+    db.create_all()  # Run under the app context
+
 
 # a_user = {'name': 'Emily', 'email': 'eruttenb@uncc.edu'}
 
@@ -31,94 +36,126 @@ with app.app_context():
 @app.route('/')
 @app.route('/index')
 def index():
-    #Get user from database
+    # Get user from database
     a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
     return render_template('index.html', user=a_user)
 
 
 @app.route('/notes')
 def get_notes():
-    #Get user from database
-    a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
-    #Get notes from database
-    my_notes = db.session.query(Note).all()
+    # Retrieve user from database
+    # Check if user is saved in session
+    if session.get('user'):
+        # Retrieve notes from database
+        my_notes = db.session.query(Note).filter_by(user_id=session['user_id']).all()
 
-    return render_template('notes.html', notes=my_notes, user=a_user)
+        return render_template('notes.html', notes=my_notes, user=session['user'])
+    else:
+        # Redirect user to login view
+        return redirect(url_for('login'))
 
 
 @app.route('/notes/<note_id>')
 def get_note(note_id):
-    #Get user from database
+    # Get user from database
     a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
-    #Get notes from database
+    # Get notes from database
     my_notes = db.session.query(Note).filter_by(id=note_id).one()
 
-    return render_template('note.html', note=my_notes , user=a_user)
+    return render_template('note.html', note=my_notes, user=a_user)
 
 
 @app.route('/notes/new', methods=['GET', 'POST'])
 def new_note():
-    #Check method used for request
+    # Check method used for request
     if request.method == 'POST':
-        #Get title data
+        # Get title data
         title = request.form['title']
-        #Get note data
+        # Get note data
         text = request.form['noteText']
-        #Get data stamp
+        # Get data stamp
         from datetime import date
         today = date.today()
-        #Format date mm/dd/yyy
+        # Format date mm/dd/yyy
         today = today.strftime("%m-%d-%Y")
-        #Get the last ID used and increment by 1
-        #id = len(notes)+1
-        #Create new note entry
-        #notes[id] = {'title': title, 'text': text, 'date': today}
+        # Get the last ID used and increment by 1
+        # id = len(notes)+1
+        # Create new note entry
+        # notes[id] = {'title': title, 'text': text, 'date': today}
         new_record = Note(title, text, today)
         db.session.add(new_record)
         db.session.commit()
 
         return redirect(url_for('get_notes'))
     else:
-        #GET request - show new note form
-        #Retrieve user from database
+        # GET request - show new note form
+        # Retrieve user from database
         a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
         return render_template('new.html', user=a_user)
 
+
 @app.route('/notes/edit/<note_id>', methods=['GET', 'POST'])
 def update_note(note_id):
-    #Check method used for request
+    # Check method used for request
     if request.method == 'POST':
-        #Get title data
+        # Get title data
         title = request.form['title']
-        #Get note data
+        # Get note data
         text = request.form['noteText']
         note = db.session.query(Note).filter_by(id=note_id).one()
-        #Update note data
+        # Update note data
         note.title = title
         note.text = text
-        #Update note in db
+        # Update note in db
         db.session.add(note)
         db.session.commit()
 
         return redirect(url_for('get_notes'))
     else:
-        #GET request - show new note form to edit note
-        #retrieve user from database
+        # GET request - show new note form to edit note
+        # retrieve user from database
         a_user = db.session.query(User).filter_by(email='eruttenb@uncc.edu').one()
 
-        #retrieve note from database
+        # retrieve note from database
         my_note = db.session.query(Note).filter_by(id=note_id).one()
 
         return render_template('new.html', note=my_note, user=a_user)
 
+
 @app.route('/notes/delete/<note_id>', methods=['POST'])
 def delete_note(note_id):
-    #Retrieve note from database
+    # Retrieve note from database
     my_note = db.session.query(Note).filter_by(id=note_id).one()
     db.session.delete(my_note)
     db.session.commit()
 
     return redirect(url_for('get_notes'))
+
+
+@app.route('/register', methods=['POST', 'GET'])
+def register():
+    form = RegisterForm()
+
+    if request.method == 'POST' and form.validate_on_submit():
+        # salt and hash password
+        h_password = bcrypt.hashpw(
+            request.form['password'].encode('utf-8'), bcrypt.gensalt())
+        # get entered user data
+        first_name = request.form['firstname']
+        last_name = request.form['lastname']
+        # create user model
+        new_user = User(first_name, last_name, request.form['email'], h_password)
+        # add user to database and commit
+        db.session.add(new_user)
+        db.session.commit()
+        # save the user's name to the session
+        session['user'] = first_name
+        session['user_id'] = new_user.id  # access id value from user model of this newly added user
+        # show user dashboard view
+        return redirect(url_for('get_notes'))
+
+    # something went wrong - display register view
+    return render_template('register.html', form=form)
 
 
 app.run(host=os.getenv('IP', '127.0.0.1'), port=int(os.getenv('PORT', 5000)), debug=True)
